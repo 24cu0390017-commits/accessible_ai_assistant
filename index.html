@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Accessible Assistant</title>
+
+<!-- TensorFlow + COCO SSD -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+<style>
+:root {
+    --bg-dark: linear-gradient(to bottom, #0a0f2c, #001f4d);
+    --primary-blue: #007bff;
+    --light-blue: #3399ff;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: var(--bg-dark);
+    color: white;
+    text-align: center;
+    transition: 0.3s;
+}
+
+header {
+    padding: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    background: #001a33;
+}
+
+.container {
+    padding: 20px;
+}
+
+textarea {
+    width: 90%;
+    height: 120px;
+    font-size: 20px;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    outline: none;
+}
+
+button {
+    margin: 10px;
+    padding: 12px 20px;
+    font-size: 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: var(--primary-blue);
+    color: white;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: var(--light-blue);
+}
+
+.controls {
+    margin-top: 20px;
+}
+
+video {
+    margin-top: 20px;
+    width: 300px;
+    border-radius: 10px;
+}
+
+.high-contrast {
+    background: black !important;
+    color: yellow !important;
+}
+
+footer {
+    margin-top: 30px;
+    padding: 15px;
+    background: #001a33;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+🌙 Smart Accessible Assistant
+</header>
+
+<div class="container">
+
+<h2>Type or Speak</h2>
+
+<textarea id="textInput" aria-label="Text input area"></textarea>
+<br>
+
+<button onclick="speakText()">🔊 Read</button>
+<button onclick="startListening()">🎤 Speak</button>
+<button onclick="clearText()">❌ Clear</button>
+
+<div class="controls">
+    <button onclick="increaseFont()">A+</button>
+    <button onclick="decreaseFont()">A-</button>
+    <button onclick="toggleContrast()">High Contrast</button>
+</div>
+
+<h2>Surroundings Reader</h2>
+
+<button onclick="startCamera()">📷 Start Camera</button>
+<button onclick="detectObjects()">🔍 Detect Objects</button>
+
+<br>
+<video id="video" autoplay muted></video>
+
+<p id="status"></p>
+
+</div>
+
+<footer>
+Accessible for Everyone ♿ | Dark Sky Blue Theme
+</footer>
+
+<script>
+let fontSize = 20;
+let model;
+const video = document.getElementById("video");
+const status = document.getElementById("status");
+
+// Text to Speech
+function speakText() {
+    const text = document.getElementById("textInput").value;
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.rate = 1;
+    window.speechSynthesis.speak(speech);
+}
+
+// Voice Recognition
+function startListening() {
+    if (!('webkitSpeechRecognition' in window)) {
+        alert("Speech recognition not supported.");
+        return;
+    }
+
+    const recognition = new webkitSpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.start();
+    status.innerText = "Listening...";
+
+    recognition.onresult = function(event) {
+        document.getElementById("textInput").value =
+            event.results[0][0].transcript;
+        status.innerText = "Voice captured!";
+    };
+}
+
+// Clear
+function clearText() {
+    document.getElementById("textInput").value = "";
+}
+
+// Font Controls
+function increaseFont() {
+    fontSize += 2;
+    document.getElementById("textInput").style.fontSize = fontSize + "px";
+}
+
+function decreaseFont() {
+    fontSize -= 2;
+    document.getElementById("textInput").style.fontSize = fontSize + "px";
+}
+
+// Contrast Toggle
+function toggleContrast() {
+    document.body.classList.toggle("high-contrast");
+}
+
+// Start Camera
+async function startCamera() {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+}
+
+// Load Model
+cocoSsd.load().then(loadedModel => {
+    model = loadedModel;
+});
+
+// Detect Objects
+async function detectObjects() {
+    if (!model) {
+        alert("Model loading, please wait...");
+        return;
+    }
+
+    const predictions = await model.detect(video);
+
+    if (predictions.length > 0) {
+        let objects = predictions.map(p => p.class).join(", ");
+        status.innerText = "Detected: " + objects;
+        speakTextFromDetection(objects);
+    } else {
+        status.innerText = "No objects detected.";
+    }
+}
+
+// Speak detected objects
+function speakTextFromDetection(text) {
+    const speech = new SpeechSynthesisUtterance("I see " + text);
+    window.speechSynthesis.speak(speech);
+}
+</script>
+
+</body>
+</html>
